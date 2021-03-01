@@ -35,7 +35,7 @@ function queryPort(node, port, type) {
     let url = 'http://'+dev.ip+'/'+dev.password+'/?pt='+port+'&scl='+dev.ports[port].scl+'&i2c_dev='+type;
 
     console.log('[CLIENT] Query: '+url);
-    fetch(url, { timeout: 5 })
+    fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
             let value = body;
