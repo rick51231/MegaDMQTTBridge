@@ -67,7 +67,7 @@ function queryPort(node, port, type, isDefault = false) {
     }
 
 
-    console.log('[CLIENT] Query: '+url);
+    //console.log('[CLIENT] Query: '+url);
     fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
@@ -81,11 +81,6 @@ function queryPort(node, port, type, isDefault = false) {
 
                 value = {co2: value};
             } else if(type==='max44009') {
-                if(value==='65535' || value==='767' || value==='1279') {
-                    console.log('[CLIENT] invalid: value:'+value+' port:'+node+'/'+port+'/'+type);
-                    return;
-                }
-
                 value = { light: value };
             } else if(type.startsWith('htu21d-')) {
                 if(type.substr(-1)==='t')
@@ -96,7 +91,6 @@ function queryPort(node, port, type, isDefault = false) {
                 let result = value.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
 
                 value = { temp: parseFloat(result[1]), hum: parseFloat(result[2]) };
-                value = JSON.stringify(value);
             } else if(type==='bmx280') {
                 let result = value.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
 
@@ -146,7 +140,7 @@ function onHttpRequest(request, response) {
     const node = queryObject.pathname.substr(1);
     const port = queryObject.searchParams.get('pt');
 
-    console.log(queryObject.searchParams);
+    // console.log(queryObject.searchParams);
     console.log("[Server] Query: "+request.url);
 
     if(port !== undefined && config.devices[node]!==undefined) {//} && config.devices[node].ip===response.socket.remoteAddress) {
