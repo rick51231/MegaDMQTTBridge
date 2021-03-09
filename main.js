@@ -156,7 +156,7 @@ function onHttpRequest(request, response) {
     if(port !== undefined && config.devices[node]!==undefined) {//} && config.devices[node].ip===response.socket.remoteAddress) {
         const mode = queryObject.searchParams.get('m') === '1' ? 'OFF' : 'ON';
 
-        mqttSend(node, port, mode);
+        mqttSend(node, port, JSON.stringify({ value: mode }));
 
         response.end();
         return;
