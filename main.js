@@ -122,7 +122,7 @@ function queryPort(node, port, type, isDefault = false) {
 
 function mqttSend(prefix, subTopic, message) {
     let topic = config.mqtt.prefix+'/'+prefix+'/'+subTopic;
-    mqttClient.publish(topic, message.toString() ); //, { retain: true }
+    mqttClient.publish(topic, message.toString(),{ retain: config.mqtt.retain });
     console.log('['+topic+'] Send: '+message.toString());
 }
 
