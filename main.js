@@ -122,7 +122,7 @@ function queryPort(node, port, type, isDefault = false) {
 
 
 function mqttSend(prefix, subTopic, message) {
-    let topic = 'megad_mqtt_bridge/'+prefix+'/'+subTopic;
+    let topic = config.mqtt.prefix+'/'+prefix+'/'+subTopic;
     mqttClient.publish(topic, message.toString() ); //, { retain: true }
     console.log('['+topic+'] Send: '+message.toString());
 }

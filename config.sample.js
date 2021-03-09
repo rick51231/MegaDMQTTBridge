@@ -15,6 +15,7 @@ config.mqtt.host = ''; //MQTT server host
 config.mqtt.port = 1883; //MQTT server port
 config.mqtt.username = ''; //MQTT server username
 config.mqtt.password = ''; //MQTT server password
+config.mqtt.prefix = 'megad_mqtt_bridge'; //MQTT topic prefix
 
 //Example device:
 config.devices.mega1 = {
