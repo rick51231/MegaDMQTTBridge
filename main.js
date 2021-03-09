@@ -17,22 +17,55 @@ mqttClient.subscribe('');
 
 for (const [node, params] of Object.entries(config.devices)) {
     params.ports.forEach(function (port, portId) {
-        port.query.forEach(function(type) {
+        if(port.query!==undefined) {
+            port.query.forEach(function (type) {
+                let timeout = Math.floor(Math.random() * Math.floor(params.interval * 1000));
+
+                console.log('[INIT] Setting query delay: ' + timeout + ' for:' + node + '/' + portId + '/' + type);
+
+                setTimeout(function () {
+                    queryPort(node, portId, type);
+                }, timeout);
+            });
+        }
+
+        if(port.type!=='') {
             let timeout = Math.floor(Math.random() * Math.floor(params.interval*1000));
 
-            console.log('[INIT] Setting query delay: '+timeout+' for:'+node+'/'+portId+'/'+type);
+            console.log('[INIT] Setting query delay: '+timeout+' for:'+node+'/'+portId+'/'+port.type+' (default)');
 
             setTimeout(function () {
-                queryPort(node, portId, type);
+                queryPort(node, portId, port.type, true);
             }, timeout);
-        });
+        }
     });
+
+
 }
 
 
-function queryPort(node, port, type) {
+function queryPort(node, port, type, isDefault = false) {
     let dev = config.devices[node];
-    let url = 'http://'+dev.ip+'/'+dev.password+'/?pt='+port+'&scl='+dev.ports[port].scl+'&i2c_dev='+type;
+    let urlType = type;
+    let i2c_par = 0;
+
+    let url = 'http://'+dev.ip+'/'+dev.password+'/?pt='+port;
+
+    if(isDefault) {
+        url += '&cmd=get';
+    } else {
+        if(type.startsWith('htu21d-')) { //htu21d-h -> 0, htu21d-t -> 1
+            urlType = 'htu21d';
+
+            if(type.substr(-1)==='t')
+                i2c_par = 1;
+        } else if(type==='bmx280') {
+            i2c_par = 3;
+        }
+
+        url += '&scl='+dev.ports[port].scl+'&i2c_dev='+urlType+'&i2c_par='+i2c_par;
+    }
+
 
     console.log('[CLIENT] Query: '+url);
     fetch(url, { timeout: 5000 })
@@ -41,11 +74,40 @@ function queryPort(node, port, type) {
             let value = body;
 
             if(type==='t67xx') {
+                if (value === '65535' || value === '767' || value === '1279') {
+                    console.log('[CLIENT] invalid: value:' + value + ' port:' + node + '/' + port + '/' + type);
+                    return;
+                }
+
+                value = {co2: value};
+            } else if(type==='max44009') {
                 if(value==='65535' || value==='767' || value==='1279') {
                     console.log('[CLIENT] invalid: value:'+value+' port:'+node+'/'+port+'/'+type);
                     return;
                 }
+
+                value = { light: value };
+            } else if(type.startsWith('htu21d-')) {
+                if(type.substr(-1)==='t')
+                    value = { temp: value };
+                else
+                    value = { hum: value };
+
+                value = JSON.stringify(value);
+            } else if(type==='htu21d') {
+                let result = value.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
+
+                value = { temp: parseFloat(result[1]), hum: parseFloat(result[2]) };
+                value = JSON.stringify(value);
+            } else if(type==='bmx280') {
+                let result = value.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
+
+                value = { temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3]) };
+            } else {
+                value = { value: value };
             }
+
+            value = JSON.stringify(value);
 
             mqttSend(node, port, value);
         })
@@ -53,7 +115,7 @@ function queryPort(node, port, type) {
 
 
     setTimeout(function () {
-        queryPort(node, port, type);
+        queryPort(node, port, type, isDefault);
     }, config.devices[node].interval*1000);
 }
 
@@ -75,13 +137,16 @@ function onHttpRequest(request, response) {
 
     const queryObject = new URL(request.url, 'http://localhost');
     const node = queryObject.pathname.substr(1);
+    const port = queryObject.searchParams.get('pt');
 
     console.log(queryObject.searchParams);
     console.log("[Server] Query: "+request.url);
 
-    if(config.devices[node]!==undefined && config.devices[node].ip===response.socket.remoteAddress) {
+    if(port !== undefined && config.devices[node]!==undefined) {//} && config.devices[node].ip===response.socket.remoteAddress) {
+        const mode = queryObject.searchParams.get('m') === '1' ? 'OFF' : 'ON';
 
-        response.write("Hi");
+        mqttSend(node, port, mode);
+
         response.end();
         return;
     }
