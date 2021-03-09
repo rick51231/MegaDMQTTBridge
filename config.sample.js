@@ -24,7 +24,7 @@ config.devices.mega1 = {
     ports: []
 };
 
-//Devices types: max44009 light, t67xx co2, htu21d temp/hum (only type), htu21d-t temp (only query), htu21d-h hum (only query), bmx280 temp/hum/press (only type)
+//Devices types: max44009 light, t67xx co2, htu21d temp/hum (only type), htu21d-t temp (only query), htu21d-h hum (only query), bmx280 temp/hum/press (only type), 1wbus temp (only type)
 //type - Port callback type, '' - for none,
 //scl - SCL port number for i2c devices
 //query - Types for http query

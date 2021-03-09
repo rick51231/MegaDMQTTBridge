@@ -52,7 +52,7 @@ function queryPort(node, port, type, isDefault = false) {
     let url = 'http://'+dev.ip+'/'+dev.password+'/?pt='+port;
 
     if(isDefault) {
-        url += '&cmd=get';
+        url += '&cmd=' + (type==='1wbus' ? 'list' : 'get');
     } else {
         if(type.startsWith('htu21d-')) { //htu21d-h -> 0, htu21d-t -> 1
             urlType = 'htu21d';
@@ -92,8 +92,6 @@ function queryPort(node, port, type, isDefault = false) {
                     value = { temp: value };
                 else
                     value = { hum: value };
-
-                value = JSON.stringify(value);
             } else if(type==='htu21d') {
                 let result = value.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
 
@@ -102,7 +100,16 @@ function queryPort(node, port, type, isDefault = false) {
             } else if(type==='bmx280') {
                 let result = value.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
 
-                value = { temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3]) };
+                value = {temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3])};
+            } else if(type==='1wbus') {
+                const data = value.match(/([a-f\d]{12}):([\d\-.]*)/gi);
+
+                value = {};
+
+                data.forEach(function (item) {
+                    const tmpItem = item.split(':');
+                    value[tmpItem[0]] = parseFloat(tmpItem[1]);
+                })
             } else {
                 value = { value: value };
             }
