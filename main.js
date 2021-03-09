@@ -13,7 +13,6 @@ const mqttClient = mqtt.connect('mqtt://'+config.mqtt.host, {
 http.createServer(onHttpRequest).listen(config.core.httpPort, config.core.httpAddress);
 
 mqttClient.on('message', onMqttMessage);
-mqttClient.subscribe('');
 
 for (const [node, params] of Object.entries(config.devices)) {
     params.ports.forEach(function (port, portId) {
@@ -40,7 +39,7 @@ for (const [node, params] of Object.entries(config.devices)) {
         }
     });
 
-
+    mqttClient.subscribe(config.mqtt.prefix + '/' + node + '/cmd');
 }
 
 
@@ -129,6 +128,17 @@ function mqttSend(prefix, subTopic, message) {
 
 function onMqttMessage(topic, message) { //, packet
     console.log('['+topic+'] Receive: '+message.toString());
+
+    if(topic.startsWith(config.mqtt.prefix+'/') && topic.endsWith('/cmd')) {
+        let node = topic.substr(config.mqtt.prefix.length+1).slice(0, -4);
+        if(config.devices[node]===undefined)
+            return;
+
+        let url = 'http://' + config.devices[node].ip + '/' + config.devices[node].password + '/?cmd=' + message;
+
+        fetch(url, { timeout: 5000 })
+            .catch(err => console.log('[CMD] error: '+err));
+    }
 
 }
 
