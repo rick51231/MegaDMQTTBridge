@@ -79,7 +79,7 @@ function queryPort(node, port, type, isDefault = false) {
                     return;
                 }
 
-                value = {co2: value};
+                value = { co2: value };
             } else if(type==='max44009') {
                 value = { light: value };
             } else if(type.startsWith('htu21d-')) {
@@ -108,9 +108,9 @@ function queryPort(node, port, type, isDefault = false) {
                 value = { value: value };
             }
 
-            value = JSON.stringify(value);
+            value = JSON.stringify({ value: value });
 
-            mqttSend(node, port, value);
+            mqttSend(node, port + (isDefault ? '' : '/' + type), value);
         })
         .catch(err => console.log('[CLIENT] error: '+err));
 
