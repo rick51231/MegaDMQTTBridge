@@ -73,7 +73,7 @@ function queryPort(node, port, type, isDefault = false) {
             let value = body;
 
             if(type==='t67xx') {
-                if (value === '65535' || value === '767' || value === '1279') {
+                if ((value - 255) % 256 === 0) {
                     console.log('[CLIENT] invalid: value:' + value + ' port:' + node + '/' + port + '/' + type);
                     return;
                 }
