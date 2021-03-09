@@ -153,7 +153,7 @@ function onHttpRequest(request, response) {
     // console.log(queryObject.searchParams);
     console.log("[Server] Query: "+request.url);
 
-    if(port !== undefined && config.devices[node]!==undefined) {//} && config.devices[node].ip===response.socket.remoteAddress) {
+    if(port !== undefined && config.devices[node]!==undefined && config.devices[node].ip===response.socket.remoteAddress) {
         const mode = queryObject.searchParams.get('m') === '1' ? 'OFF' : 'ON';
 
         mqttSend(node, port, JSON.stringify({ value: mode }));
