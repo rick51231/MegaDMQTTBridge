@@ -137,6 +137,18 @@ function onMqttMessage(topic, message) { //, packet
         let url = 'http://' + config.devices[node].ip + '/' + config.devices[node].password + '/?cmd=' + message;
 
         fetch(url, { timeout: 5000 })
+            .then(res => res.text())
+            .then(function (body) {
+                if(body!=="Done")
+                    return;
+
+                let m = message.toString().match(/^(\d*):([10])$/);
+
+                if(m===null)
+                    return;
+
+                mqttSend(node, m[1], JSON.stringify({ value: m[2]==='1' ? 'ON' : 'OFF' }));
+            })
             .catch(err => console.log('[CMD] error: '+err));
     }
 
