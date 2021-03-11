@@ -154,9 +154,22 @@ function onHttpRequest(request, response) {
     console.log("[Server] Query: "+request.url);
 
     if(port !== undefined && config.devices[node]!==undefined && config.devices[node].ip===response.socket.remoteAddress) {
-        const mode = queryObject.searchParams.get('m') === '1' ? 'OFF' : 'ON';
+        const m = queryObject.searchParams.get('m');
+        const v = queryObject.searchParams.get('v');
 
-        mqttSend(node, port, JSON.stringify({ value: mode }));
+        let value = 'OFF';
+        if(m===null) {
+            value = v === '1' ? 'ON' : 'OFF';
+        } else {
+            if(m==='2') {
+                response.end();
+                return;
+            }
+
+            value = m === '1'  ? 'ON' : 'OFF';
+        }
+
+        mqttSend(node, port, JSON.stringify({ value: value }));
 
         response.end();
         return;
