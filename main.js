@@ -94,6 +94,10 @@ function queryPort(node, port, type, isDefault = false) {
                 let result = value.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
 
                 value = {temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3])};
+            } else if(type==='hm3301') {
+                let result = value.match(/pm1:([\d]*)\/pm2\.5:([\d]*)\/pm10:([\d]*)/i);
+
+                value = {pm1: parseFloat(result[1]), pm2_5: parseFloat(result[2]), pm10: parseFloat(result[3])};
             } else if(type==='1wbus') {
                 const data = value.match(/([a-f\d]{12}):([\d\-.]*)/gi);
 
