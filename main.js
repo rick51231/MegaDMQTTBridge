@@ -174,7 +174,7 @@ function onHttpRequest(request, response) {
         const v = queryObject.searchParams.get('v');
 
         let value = 'OFF';
-        if(m===null) {
+        if(m===null && v!==null) {
             value = v === '1' ? 'ON' : 'OFF';
         } else {
             if(m==='2') {
@@ -182,7 +182,7 @@ function onHttpRequest(request, response) {
                 return;
             }
 
-            value = m === '1'  ? 'ON' : 'OFF';
+            value = m === '1'  ? 'OFF' : 'ON';
         }
 
         mqttSend(node, port, JSON.stringify({ value: value }));
