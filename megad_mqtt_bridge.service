@@ -1,0 +1,18 @@
+[Unit]
+Description=MegaD MQTT Bridge
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/nodejs /home/user/megad_mqtt_bridge/main.js
+Restart=always
+User=user
+Group=user
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=NODE_ENV=production
+WorkingDirectory=/home/user/megad_mqtt_bridge
+StandardOutput=append:/var/log/megad_mqtt_bridge/main.log
+StandardError=append:/var/log/megad_mqtt_bridge/error.log
+
+[Install]
+WantedBy=multi-user.target
