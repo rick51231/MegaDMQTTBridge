@@ -40,7 +40,9 @@ for (const [node, params] of Object.entries(config.devices)) {
     });
 
     mqttClient.subscribe(config.mqtt.prefix + '/' + node + '/cmd');
+    resync(node);
 }
+
 
 
 function queryPort(node, port, type, isDefault = false) {
@@ -70,50 +72,12 @@ function queryPort(node, port, type, isDefault = false) {
     fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
-            let value = body;
+            let value = formatParam(node, type, body);
 
-            if(type==='t67xx') {
-                if ((value - 255) % 256 === 0) {
-                    console.log('[CLIENT] invalid: value:' + value + ' port:' + node + '/' + port + '/' + type);
-                    return;
-                }
+            if(value===false)
+                return;
 
-                value = { co2: value };
-            } else if(type==='max44009') {
-                value = { light: value };
-            } else if(type.startsWith('htu21d-')) {
-                if(type.substr(-1)==='t')
-                    value = { temp: value };
-                else
-                    value = { hum: value };
-            } else if(type==='htu21d') {
-                let result = value.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
-
-                value = { temp: parseFloat(result[1]), hum: parseFloat(result[2]) };
-            } else if(type==='bmx280') {
-                let result = value.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
-
-                value = {temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3])};
-            } else if(type==='hm3301') {
-                let result = value.match(/pm1:([\d]*)\/pm2\.5:([\d]*)\/pm10:([\d]*)/i);
-
-                value = {pm1: parseFloat(result[1]), pm2_5: parseFloat(result[2]), pm10: parseFloat(result[3])};
-            } else if(type==='1wbus') {
-                const data = value.match(/([a-f\d]{12}):([\d\-.]*)/gi);
-
-                value = {};
-
-                data.forEach(function (item) {
-                    const tmpItem = item.split(':');
-                    value[tmpItem[0]] = parseFloat(tmpItem[1]);
-                })
-            } else {
-                value = { value: value };
-            }
-
-            value = JSON.stringify({ value: value });
-
-            mqttSend(node, port + (isDefault ? '' : '/' + type), value);
+            sendPortStatus(node, port + (isDefault ? '' : '/' + type), value);
         })
         .catch(err => console.log('[CLIENT] error: '+err));
 
@@ -151,11 +115,97 @@ function onMqttMessage(topic, message) { //, packet
                 if(m===null)
                     return;
 
-                mqttSend(node, m[1], JSON.stringify({ value: m[2]==='1' ? 'ON' : 'OFF' }));
+                sendPortStatus(node, m[1],  m[2]==='1' ? 'ON' : 'OFF');
             })
             .catch(err => console.log('[CMD] error: '+err));
     }
 
+}
+
+function formatParam(node, type, rawValue) {
+    if(rawValue==='')
+        return false;
+
+    let value = parseFloat(rawValue);
+
+    if(type==='t67xx') {
+        if ((value - 255) % 256 === 0 || value === 0) {
+            console.log('[CLIENT] invalid: value:' + rawValue + ' port:' + node + '/' + port + '/' + type);
+            return false;
+        }
+
+        value = { co2: value };
+    } else if(type==='max44009') {
+        value = { light: value };
+    } else if(type.startsWith('htu21d-')) {
+        if(type.substr(-1)==='t')
+            value = { temp: value };
+        else
+            value = { hum: value };
+    } else if(type==='htu21d') {
+        let result = rawValue.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
+
+        value = { temp: parseFloat(result[1]), hum: parseFloat(result[2]) };
+    } else if(type==='bmx280') {
+        let result = rawValue.match(/temp:([\d\-.]*)\/press:([\d.]*)\/hum:([\d.]*)/i);
+
+        value = {temp: parseFloat(result[1]), press: parseFloat(result[2]), hum: parseFloat(result[3])};
+    } else if(type==='hm3301') {
+        let result = rawValue.match(/pm1:([\d]*)\/pm2\.5:([\d]*)\/pm10:([\d]*)/i);
+
+        value = {pm1: parseFloat(result[1]), pm2_5: parseFloat(result[2]), pm10: parseFloat(result[3])};
+    } else if(type==='1wbus') {
+        const data = rawValue.match(/([a-f\d]{12}):([\d\-.]*)/gi);
+
+        value = {};
+
+        data.forEach(function (item) {
+            const tmpItem = item.split(':');
+            value[tmpItem[0]] = parseFloat(tmpItem[1]);
+        })
+    } else {
+        let result = rawValue.match(/(ON|OFF)\/(\d*)/i);
+
+        if(result===null)
+            value = rawValue ;
+        else
+            value = result[1];
+    }
+
+    return value;
+}
+
+function resync(node) {
+    let dev = config.devices[node];
+
+    let url = 'http://'+dev.ip+'/'+dev.password+'/?cmd=all';
+
+    console.log('[RESYNC] Query: '+url);
+    fetch(url, { timeout: 5000 })
+        .then(res => res.text())
+        .then(function (body) {
+
+            let data = body.split(';');
+
+            if(data.length<20 || data.length>50) {
+                console.log('[RESYNC] error: invalid length '+body);
+                return;
+            }
+
+            for(let i = 0; i<data.length; i++) {
+                let type = config.devices[node].ports[i] === undefined ? '' : config.devices[node].ports[i].type;
+                let value = formatParam(node, type, data[i]);
+
+                if(value!==false)
+                    sendPortStatus(node, i, value);
+            }
+        })
+        .catch(err => console.log('[RESYNC] error: '+err));
+
+
+    setTimeout(function () {
+        resync(node);
+    }, config.devices[node].resync*1000);
 }
 
 function onHttpRequest(request, response) {
@@ -185,7 +235,7 @@ function onHttpRequest(request, response) {
             value = m === '1'  ? 'OFF' : 'ON';
         }
 
-        mqttSend(node, port, JSON.stringify({ value: value }));
+        sendPortStatus(node, port, value);
 
         response.end();
         return;
@@ -194,4 +244,8 @@ function onHttpRequest(request, response) {
     response.statusCode = 404;
     response.write("Not Found");
     response.end();
+}
+
+function sendPortStatus(node, port, value) {
+    mqttSend(node, port, JSON.stringify({ value: value }));
 }

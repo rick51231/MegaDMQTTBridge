@@ -23,6 +23,7 @@ config.devices.mega1 = {
     ip: '127.0.0.1', //Megad ip address
     password: '', //Megad password
     interval: 30, //Query interval
+    resync: 300, //Resync interval
     ports: []
 };
 
