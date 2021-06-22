@@ -72,7 +72,7 @@ function queryPort(node, port, type, isDefault = false) {
     fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
-            let value = formatParam(node, type, body);
+            let value = formatParam(node, port, type, body);
 
             if(value===false)
                 return;
@@ -122,7 +122,7 @@ function onMqttMessage(topic, message) { //, packet
 
 }
 
-function formatParam(node, type, rawValue) {
+function formatParam(node, port, type, rawValue) {
     if(rawValue==='')
         return false;
 
@@ -194,7 +194,7 @@ function resync(node) {
 
             for(let i = 0; i<data.length; i++) {
                 let type = config.devices[node].ports[i] === undefined ? '' : config.devices[node].ports[i].type;
-                let value = formatParam(node, type, data[i]);
+                let value = formatParam(node, i, type, data[i]);
 
                 if(value!==false)
                     sendPortStatus(node, i, value);
