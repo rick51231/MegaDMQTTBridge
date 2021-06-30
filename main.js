@@ -68,6 +68,7 @@ function queryPort(node, port, type, isDefault = false) {
         url += '&scl='+dev.ports[port].scl+'&i2c_dev='+urlType+'&i2c_par='+i2c_par;
     }
 
+    let qStart = new Date();
 
     //console.log('[CLIENT] Query: '+url);
     fetch(url, { timeout: 5000 })
@@ -77,6 +78,9 @@ function queryPort(node, port, type, isDefault = false) {
 
             if(value===false)
                 return;
+
+            let qTime = (new Date()).getTime() - qStart.getTime();
+            console.log('[CLIENT] delay '+node+'/'+port+'/'+type+'/'+isDefault+': '+qTime);
 
             sendPortStatus(node, port + (isDefault ? '' : '/' + type), value);
         })
