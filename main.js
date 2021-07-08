@@ -198,11 +198,15 @@ function resync(node) {
             }
 
             for(let i = 0; i<data.length; i++) {
-                let type = config.devices[node].ports[i] === undefined ? '' : config.devices[node].ports[i].type;
-                let value = formatParam(node, i, type, data[i]);
+                try {
+                    let type = config.devices[node].ports[i] === undefined ? '' : config.devices[node].ports[i].type;
+                    let value = formatParam(node, i, type, data[i]);
 
-                if(value!==false)
-                    sendPortStatus(node, i, value);
+                    if (value !== false)
+                        sendPortStatus(node, i, value);
+                } catch (e) {
+                    console.log('[RESYNC] '+node+'/'+i+' error: '+err)
+                }
             }
         })
         .catch(err => console.log('[RESYNC] error: '+err));
