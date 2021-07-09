@@ -205,7 +205,7 @@ function resync(node) {
                     if (value !== false)
                         sendPortStatus(node, i, value);
                 } catch (e) {
-                    console.log('[RESYNC] '+node+'/'+i+' error: '+err)
+                    console.log('[RESYNC] '+node+'/'+i+' error: '+e)
                 }
             }
         })
