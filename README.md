@@ -10,5 +10,6 @@ Please note, that not all MegaD features are supported here.
 * Clone repository
 * Install packages with `npm install` 
 * Copy config.sample.js to config.js and edit it
+* In the MegaD settings, set ``SRV`` to ``server_ip:port`` (example: ``192.168.0.10:8080``), ``SRV TYPE`` to ``HTTP``, ``Script`` to device's name from ``config.js`` (example ``mega1``)
 * Run with `node main.js`
 * Optionally, you can add it to the systemd (example unit in megad_mqtt_bridge.service)
