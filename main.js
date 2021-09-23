@@ -40,11 +40,62 @@ for (const [node, params] of Object.entries(config.devices)) {
         }
     });
 
+    for (const [dev, interval] of Object.entries(params.rs485)) {
+        let timeout = Math.floor(Math.random() * Math.floor(interval*1000));
+        console.log('[INIT] Setting rs485 delay: '+timeout+' for:'+node+'/'+dev);
+
+        setTimeout(function () {
+            queryRS485(node, dev);
+        }, timeout);
+    }
+
     mqttClient.subscribe(config.mqtt.prefix + '/' + node + '/cmd');
     resync(node);
 }
 
+function queryRS485(node, type) { //Going to rewrite this to async...
+    let dev = config.devices[node];
 
+    let query = '';
+
+    if(type==='dds238')
+        query = '0103000C0006'; //Request 6 registers, starting from 0x000C
+
+    let url = 'http://'+dev.ip+'/'+dev.password+'/?uart_tx='+query+'&mode=rs485';
+
+    fetch(url, { timeout: 5000 })
+        .then(res => res.text())
+        .then(function (body) {
+
+            setTimeout(function() {
+                let url = 'http://'+dev.ip+'/'+dev.password+'/?uart_rx=1&mode=rs485';
+                fetch(url, { timeout: 5000 })
+                    .then(res => res.text())
+                    .then(function (body) {
+                        if(body==='' || body==="CRC Error")
+                            return;
+
+                        let buffer = Buffer.from(body.split('|').map(function(x) {return parseInt(x, 16)}));
+
+                        let voltage = buffer.readUInt16BE(3)/10;
+                        let current = buffer.readUInt16BE(5)/100;
+                        let power_active = buffer.readInt16BE(7);
+                        let power_reactive = buffer.readInt16BE(9);
+                        let power_factor = buffer.readUInt16BE(11)/1000;
+                        let frequency = buffer.readUInt16BE(13)/100;
+
+                        sendPortStatus(node, 'rs485/'+type, { voltage, current, power_active, power_reactive, power_factor, frequency });
+
+                    })
+                    .catch(err => console.log('[RS485] error: '+err));
+            }, 100);
+        })
+        .catch(err => console.log('[RS485] error: '+err));
+
+    setTimeout(function () {
+        queryRS485(node, type);
+    }, config.devices[node].rs485[type]*1000);
+}
 
 function queryPort(node, port, type, isDefault = false) {
     let dev = config.devices[node];

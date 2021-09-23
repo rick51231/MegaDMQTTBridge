@@ -24,7 +24,8 @@ config.devices.mega1 = {
     password: '', //Megad password
     interval: 30, //Query interval
     resync: 300, //Resync interval
-    ports: []
+    ports: [],
+    rs485: {}
 };
 
 //Devices types: max44009 light, t67xx co2, htu21d temp/hum (only type), htu21d-t temp (only query), htu21d-h hum (only query), bmx280 temp/hum/press (only type), 1wbus temp (only type), hm3301 dust (only query?)
@@ -33,5 +34,9 @@ config.devices.mega1 = {
 //scl - SCL port number for i2c devices
 //query - Types for http query
 config.devices.mega1.ports[0] = { type: '', scl: 0, query: ['hum'] };
+
+// RS485 devices
+// Currently the DDS238 is only supported
+config.devices.mega1.rs485['dds238'] = 30; // Format: ['device_type'] = interval
 
 module.exports = config; //This should be the last line
