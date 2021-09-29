@@ -223,6 +223,8 @@ function formatParam(node, port, type, rawValue) {
             const tmpItem = item.split(':');
             value[tmpItem[0]] = parseFloat(tmpItem[1]);
         })
+    } else if(type==='ptsensor') {
+        value = { press: value };
     } else {
         let result = rawValue.match(/(ON|OFF)\/(\d*)/i);
 
