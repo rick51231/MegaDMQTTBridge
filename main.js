@@ -166,12 +166,16 @@ function onMqttMessage(topic, message) { //, packet
                 if(body!=="Done")
                     return;
 
-                let m = message.toString().match(/^(\d*):([10])$/);
+                let match_onoff = message.toString().match(/^(\d*):([10])$/);
+                if(match_onoff!==null) {
+                    sendPortStatus(node, match_onoff[1],  match_onoff[2]==='1' ? 'ON' : 'OFF');
+                }
 
-                if(m===null)
-                    return;
+                let match_ext = message.toString().match(/^(\d+)e(\d+):(\d+)$/);
+                if(match_ext!==null) {
+                    sendPCA9685State(node, parseInt(match_ext[1], 10));
+                }
 
-                sendPortStatus(node, m[1],  m[2]==='1' ? 'ON' : 'OFF');
             })
             .catch(err => console.log('[CMD] error: '+err));
     }
@@ -231,6 +235,30 @@ function formatParam(node, port, type, rawValue) {
     return value;
 }
 
+function sendPCA9685State(node, pin) {
+    let dev = config.devices[node];
+
+    let url = 'http://'+dev.ip+'/'+dev.password+'/?pt='+pin+'&cmd=get';
+
+    console.log('[PCA9685] Query: '+url);
+    fetch(url, { timeout: 5000 })
+        .then(res => res.text())
+        .then(function (body) {
+
+            let data = body.split(';');
+
+            if(data.length!==16) {
+                console.log('[PCA9685] error: invalid length '+body);
+                return;
+            }
+
+            for(let i = 0; i<data.length; i++) {
+                sendPortStatus(node, pin+'e'+i, parseInt(data[i], 10));
+            }
+        })
+        .catch(err => console.log('[PCA9685] error: '+err));
+}
+
 function resync(node) {
     let dev = config.devices[node];
 
@@ -249,6 +277,11 @@ function resync(node) {
             }
 
             for(let i = 0; i<data.length; i++) {
+                if(data[i]==='PCA') {
+                    sendPCA9685State(node, i);
+                    continue;
+                }
+
                 try {
                     let type = config.devices[node].ports[i] === undefined ? '' : config.devices[node].ports[i].type;
                     let value = formatParam(node, i, type, data[i]);
