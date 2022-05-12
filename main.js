@@ -53,45 +53,91 @@ for (const [node, params] of Object.entries(config.devices)) {
     resync(node);
 }
 
-function queryRS485(node, type) { //Going to rewrite this to async...
+async function queryRS485(node, type) { //Going to rewrite this to async...
     let dev = config.devices[node];
 
-    let query = '';
+    let urlWrite = 'http://' + dev.ip + '/' + dev.password + '/?mode=rs485&uart_tx=';
+    let urlRead = 'http://' + dev.ip + '/' + dev.password + '/?uart_rx=1&mode=rs485';
+    if(type==='dds238') {
+        let query = '0103000C0006'; //Request 6 registers, starting from 0x000C
 
-    if(type==='dds238')
-        query = '0103000C0006'; //Request 6 registers, starting from 0x000C
+        fetch(urlWrite + query, {timeout: 5000})
+            .then(res => res.text())
+            .then(function (body) {
 
-    let url = 'http://'+dev.ip+'/'+dev.password+'/?uart_tx='+query+'&mode=rs485';
+                setTimeout(function () {
+                    fetch(urlRead, {timeout: 5000})
+                        .then(res => res.text())
+                        .then(function (body) {
+                            if (body === '' || body === "CRC Error")
+                                return;
 
-    fetch(url, { timeout: 5000 })
-        .then(res => res.text())
-        .then(function (body) {
+                            let buffer = Buffer.from(body.split('|').map(function (x) {
+                                return parseInt(x, 16)
+                            }));
 
-            setTimeout(function() {
-                let url = 'http://'+dev.ip+'/'+dev.password+'/?uart_rx=1&mode=rs485';
-                fetch(url, { timeout: 5000 })
-                    .then(res => res.text())
-                    .then(function (body) {
-                        if(body==='' || body==="CRC Error")
-                            return;
+                            let voltage = buffer.readUInt16BE(3) / 10;
+                            let current = buffer.readUInt16BE(5) / 100;
+                            let power_active = buffer.readInt16BE(7);
+                            let power_reactive = buffer.readInt16BE(9);
+                            let power_factor = buffer.readUInt16BE(11) / 1000;
+                            let frequency = buffer.readUInt16BE(13) / 100;
 
-                        let buffer = Buffer.from(body.split('|').map(function(x) {return parseInt(x, 16)}));
+                            sendPortStatus(node, 'rs485/' + type, {
+                                voltage,
+                                current,
+                                power_active,
+                                power_reactive,
+                                power_factor,
+                                frequency
+                            });
 
-                        let voltage = buffer.readUInt16BE(3)/10;
-                        let current = buffer.readUInt16BE(5)/100;
-                        let power_active = buffer.readInt16BE(7);
-                        let power_reactive = buffer.readInt16BE(9);
-                        let power_factor = buffer.readUInt16BE(11)/1000;
-                        let frequency = buffer.readUInt16BE(13)/100;
+                        })
+                        .catch(err => console.log('[RS485] error: ' + err));
+                }, 100);
+            })
+            .catch(err => console.log('[RS485] error: ' + err));
+    } else if(type==='ddsr9588') {
+        let registers = [ //Reg address, reg name, round by
+            ['00', 'voltage', 10],
+            ['08', 'current', 100],
+            ['12', 'power_active', 10],
+            ['1A', 'power_reactive', 10],
+            ['2A', 'power_factor', 100],
+            ['36', 'frequency', 10]
+        ];
 
-                        sendPortStatus(node, 'rs485/'+type, { voltage, current, power_active, power_reactive, power_factor, frequency });
+        let outData = {};
 
-                    })
-                    .catch(err => console.log('[RS485] error: '+err));
-            }, 100);
-        })
-        .catch(err => console.log('[RS485] error: '+err));
+        try {
+            for (const reg of registers) { //MegaD can't read all registers at once
+                let query = '010400' + reg[0] + '0002';
 
+                await fetch(urlWrite + query, {timeout: 5000});
+
+                await delay(200); // MegaD/DDSR9588 works really slow
+
+                let res = await fetch(urlRead, {timeout: 5000});
+
+                let body = await res.text();
+                console.log(body);
+                if (body === '' || body === "CRC Error")
+                    throw new Error('Invalid response');
+
+                let buffer = Buffer.from(body.split('|').map(function (x) {
+                    return parseInt(x, 16)
+                }));
+
+                let val = buffer.readFloatBE(3);
+
+                outData[reg[1]] = Math.round(val * reg[2]) / reg[2];
+            }
+
+            sendPortStatus(node, 'rs485/' + type, outData);
+        } catch(err) {
+            console.log('[RS485] error: ' + err);
+        }
+    }
     setTimeout(function () {
         queryRS485(node, type);
     }, config.devices[node].rs485[type]*1000);
@@ -125,6 +171,7 @@ function queryPort(node, port, type, isDefault = false) {
     fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
+            console.log(node+'-'+port+'-'+type+'-'+body);
             let value = formatParam(node, port, type, body);
 
             if(value===false)
@@ -343,4 +390,10 @@ function onHttpRequest(request, response) {
 
 function sendPortStatus(node, port, value) {
     mqttSend(node, port, JSON.stringify({ value: value }));
+}
+
+function delay(ms) {
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, ms);
+    });
 }
