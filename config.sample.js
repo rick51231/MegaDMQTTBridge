@@ -36,7 +36,7 @@ config.devices.mega1 = {
 config.devices.mega1.ports[0] = { type: '', scl: 0, query: ['hum'] };
 
 // RS485 devices
-// Currently the DDS238 is only supported
+// Currently the DDS238 and DDSR9588 are only supported
 config.devices.mega1.rs485['dds238'] = 30; // Format: ['device_type'] = interval
 
 module.exports = config; //This should be the last line
