@@ -120,7 +120,7 @@ async function queryRS485(node, type) { //Going to rewrite this to async...
                 let res = await fetch(urlRead, {timeout: 5000});
 
                 let body = await res.text();
-                console.log(body);
+
                 if (body === '' || body === "CRC Error")
                     throw new Error('Invalid response');
 
@@ -171,7 +171,6 @@ function queryPort(node, port, type, isDefault = false) {
     fetch(url, { timeout: 5000 })
         .then(res => res.text())
         .then(function (body) {
-            console.log(node+'-'+port+'-'+type+'-'+body);
             let value = formatParam(node, port, type, body);
 
             if(value===false)
