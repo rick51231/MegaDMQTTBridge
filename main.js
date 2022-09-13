@@ -158,6 +158,9 @@ function queryPort(node, port, type, isDefault = false) {
 
             if(type.substr(-1)==='t')
                 i2c_par = 1;
+        } else if(type.startsWith('radsens-')) { //radsens-s -> 1, radsens-d -> 2
+            urlType = 'radsens';
+            i2c_par = type.substr(-1)==='d' ? 2 : 1;
         } else if(type==='bmx280') {
             i2c_par = 3;
         }
@@ -248,6 +251,11 @@ function formatParam(node, port, type, rawValue) {
             value = { temp: value };
         else
             value = { hum: value };
+    } else if(type.startsWith('radsens')) {
+        if (type.substr(-1) === 'd')
+            value = {radDynamic: value};
+        else
+            value = {radStatic: value};
     } else if(type==='htu21d') {
         let result = rawValue.match(/temp:([\d\-.]*)\/hum:([\d.]*)/i);
 
